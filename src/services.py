@@ -4,21 +4,14 @@ from typing import Any, Dict, List
 import pandas as pd
 
 
-logging.basicConfig(
-    filename='app.log',
-    level=logging.INFO,
-    format='%(asctime)s - %(levelname)s - %(message)s'
-)
+logging.basicConfig(filename="app.log", level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s")
 
 
 def analyze_profitable_categories(data: pd.DataFrame, year: int, month: int) -> Dict[str, float]:
     """Анализ выгодных категорий повышенного кешбэка за указанный месяц"""
     try:
         data["date"] = pd.to_datetime(data["date"])
-        df_filtered = data[
-            (data["date"].dt.year == year)
-            & (data["date"].dt.month == month)
-        ]
+        df_filtered = data[(data["date"].dt.year == year) & (data["date"].dt.month == month)]
 
         category_sum = df_filtered.groupby("category")["amount"].sum()
         cashback_by_category = (category_sum // 100).astype(int).to_dict()
@@ -33,7 +26,7 @@ def analyze_profitable_categories(data: pd.DataFrame, year: int, month: int) -> 
 
 def investment_bank(month: str, transactions: List[Dict[str, Any]], limit: int) -> float:
     """Рассчитывает сумму, которую можно накопить в 'Инвесткопилке'
-        за указанный месяц с заданным порогом округления."""
+    за указанный месяц с заданным порогом округления."""
     try:
         target_month = datetime.strptime(month, "%Y-%m")
 

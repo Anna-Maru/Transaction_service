@@ -3,13 +3,21 @@ import logging
 from datetime import datetime
 import pandas as pd
 import requests
+import os
 from typing import Dict, Any, List
+from dotenv import load_dotenv
+
+load_dotenv()
+
+API_KEY = os.getenv("API_KEY")
+API_URL = "https://api.apilayer.com/exchangerates_data/latest"
+HEADERS = {"apikey": API_KEY}
 
 
 logging.basicConfig(
-    filename='app.log',
+    filename="app.log",
     level=logging.INFO,
-    format='%(asctime)s - %(levelname)s - %(message)s'
+    format="%(asctime)s - %(levelname)s - %(message)s"
 )
 
 
@@ -38,10 +46,13 @@ def load_user_settings(path: str = "user_settings.json") -> Dict[str, Any]:
         return json.load(f)
 
 
-def get_currency_rates(currencies: List[str]) -> dict[str, None] | dict[str, Any]:
-    """Получает текущие курсы валют"""
+def get_currency_rates(currencies: List[str]) -> Dict[str, Any]:
+    """Получает текущие курсы валют."""
     try:
-        response = requests.get("URL_ДЛЯ_API_ВАЛЮТ")
+        if not currencies:
+            return {}
+        params = {"base": "USD", "symbols": ",".join(currencies)}
+        response = requests.get(API_URL, params=params, headers=HEADERS)
         response.raise_for_status()
         data = response.json()
         rates = {cur: data["rates"].get(cur, None) for cur in currencies}
@@ -51,12 +62,12 @@ def get_currency_rates(currencies: List[str]) -> dict[str, None] | dict[str, Any
         return {cur: None for cur in currencies}
 
 
-def get_stock_prices(stocks: List[str]) -> Dict[str, float]:
+def get_stock_prices(stocks: List[str]) -> Dict[str, Any]:
     """Получает текущие цены акций S&P500."""
     prices = {}
     for symbol in stocks:
         try:
-            response = requests.get(f"URL_ДЛЯ_API_АКЦИЙ/{symbol}")
+            response = requests.get(f"{API_URL}/{symbol}", headers=HEADERS)
             response.raise_for_status()
             data = response.json()
             prices[symbol] = data.get("price", None)
@@ -67,7 +78,7 @@ def get_stock_prices(stocks: List[str]) -> Dict[str, float]:
 
 
 def get_card_stats(df: pd.DataFrame) -> List[Dict[str, Any]]:
-    """Возвращает статистику по каждой карте"""
+    """Возвращает статистику по каждой карте."""
     cards_info = []
     grouped = df.groupby("card_number")["amount"].sum().reset_index()
 
@@ -75,11 +86,7 @@ def get_card_stats(df: pd.DataFrame) -> List[Dict[str, Any]]:
         card_tail = str(row["card_number"])[-4:]
         total = round(row["amount"], 2)
         cashback = round(total // 100, 2)
-        cards_info.append({
-            "card_last_digits": card_tail,
-            "total_spent": total,
-            "cashback": cashback
-        })
+        cards_info.append({"card_last_digits": card_tail, "total_spent": total, "cashback": cashback})
 
     return cards_info
 
@@ -91,16 +98,23 @@ def get_top_transactions(df: pd.DataFrame, top_n: int = 5) -> List[Dict[str, Any
 
 
 def get_main_page_json(date_str: str, transactions_path: str) -> Dict[str, Any]:
-    """Возвращает JSON-ответ для страницы 'Главная' по следующим параметрам:
-        date_str — строка с датой в формате 'YYYY-MM-DD HH:MM:SS'
-        transactions_path — путь к Excel-файлу с транзакциями"""
+    """Возвращает JSON-ответ для страницы 'Главная'."""
     try:
         dt = datetime.strptime(date_str, "%Y-%m-%d %H:%M:%S")
 
         start_date, end_date = get_month_range(dt)
 
         df = pd.read_excel(transactions_path)
-        df["date"] = pd.to_datetime(df["date"])
+
+        df = df.rename(columns={
+            "Дата операции": "date",
+            "Номер карты": "card_number",
+            "Сумма операции": "amount",
+            "Категория": "category"
+        })
+
+        df["date"] = pd.to_datetime(df["date"], errors="coerce")
+        df["amount"] = pd.to_numeric(df["amount"], errors="coerce")
 
         mask = (df["date"] >= start_date) & (df["date"] <= end_date)
         df_filtered = df.loc[mask]
@@ -111,14 +125,11 @@ def get_main_page_json(date_str: str, transactions_path: str) -> Dict[str, Any]:
 
         response = {
             "greeting": get_greeting(dt),
-            "period": {
-                "from": start_date.strftime("%Y-%m-%d"),
-                "to": end_date.strftime("%Y-%m-%d")
-            },
+            "period": {"from": start_date.strftime("%Y-%m-%d"), "to": end_date.strftime("%Y-%m-%d")},
             "cards": get_card_stats(df_filtered),
             "top_transactions": get_top_transactions(df_filtered),
             "currency_rates": get_currency_rates(currencies),
-            "stock_prices": get_stock_prices(stocks)
+            "stock_prices": get_stock_prices(stocks),
         }
 
         logging.info("JSON для главной страницы успешно сформирован")
@@ -126,5 +137,4 @@ def get_main_page_json(date_str: str, transactions_path: str) -> Dict[str, Any]:
 
     except Exception as e:
         logging.error(f"Ошибка при формировании главной страницы: {e}")
-
         return {"error": str(e)}
