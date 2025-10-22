@@ -97,24 +97,36 @@ def get_top_transactions(df: pd.DataFrame, top_n: int = 5) -> List[Dict[str, Any
     return top_df.to_dict(orient="records")
 
 
-def get_main_page_json(date_str: str, transactions_path: str) -> Dict[str, Any]:
+def get_main_page_json(date_str: str, transactions_path: str | pd.DataFrame | list) -> Dict[str, Any]:
     """Возвращает JSON-ответ для страницы 'Главная'."""
     try:
         dt = datetime.strptime(date_str, "%Y-%m-%d %H:%M:%S")
-
         start_date, end_date = get_month_range(dt)
 
-        df = pd.read_excel(transactions_path)
+        if isinstance(transactions_path, list):
+            df = pd.DataFrame(transactions_path)
+        elif isinstance(transactions_path, pd.DataFrame):
+            df = transactions_path.copy()
+        else:
+            df = pd.read_excel(transactions_path)
 
-        df = df.rename(columns={
+        rename_map = {
             "Дата операции": "date",
+            "дата": "date",
             "Номер карты": "card_number",
+            "карта": "card_number",
             "Сумма операции": "amount",
-            "Категория": "category"
-        })
+            "сумма": "amount",
+            "Категория": "category",
+            "категория": "category",
+        }
+
+        df = df.rename(columns={col: rename_map.get(col, col) for col in df.columns})
+
 
         df["date"] = pd.to_datetime(df["date"], errors="coerce")
         df["amount"] = pd.to_numeric(df["amount"], errors="coerce")
+
 
         mask = (df["date"] >= start_date) & (df["date"] <= end_date)
         df_filtered = df.loc[mask]
@@ -137,4 +149,4 @@ def get_main_page_json(date_str: str, transactions_path: str) -> Dict[str, Any]:
 
     except Exception as e:
         logging.error(f"Ошибка при формировании главной страницы: {e}")
-        return {"error": str(e)}
+        return {"error": f"{type(e).__name__}: {e}"}

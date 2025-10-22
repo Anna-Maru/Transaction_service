@@ -16,15 +16,21 @@ def sample_transactions():
 def test_currencies_and_stocks(mock_get, sample_transactions):
     """Проверяем формирование данных по валютам и акциям,
     подменяя внешние API через mock."""
-    mock_get.return_value.json.side_effect = [{"USD": 80, "EUR": 90}, {"AAPL": 150, "AMZN": 3200}]
+    mock_get.return_value.json.side_effect = [
+        {"rates": {"USD": 80, "EUR": 90}},
+        {"AAPL": 150, "AMZN": 3200}
+    ]
 
     result = get_main_page_json("2025-05-20 12:00:00", sample_transactions)
 
-    assert "currencies" in result
-    assert result["currencies"]["USD"] == 80
-    assert result["currencies"]["EUR"] == 90
+    assert "currency_rates" in result
+    assert result["currency_rates"]["USD"] == 80
+    assert result["currency_rates"]["EUR"] == 90
 
-    assert "stocks" in result
-    assert result["stocks"]["AAPL"] == 150
-    assert result["stocks"]["AMZN"] == 3200
+
+    assert "stock_prices" in result
+    assert result["stock_prices"]["AAPL"] == 150
+    assert result["stock_prices"]["AMZN"] == 3200
+
+
     assert mock_get.call_count == 2
