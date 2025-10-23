@@ -1,65 +1,60 @@
-import pytest
-from unittest.mock import patch, Mock
+import pandas as pd
+from unittest.mock import patch
 from src.views import get_main_page_json
 
 
-@pytest.fixture
-def sample_transactions():
-    return [
-        {"карта": "1234567890123456", "сумма": 1200,
-         "категория": "Продукты", "дата": "2025-05-05"},
-        {"карта": "1234567890123456", "сумма": 800,
-         "категория": "Транспорт", "дата": "2025-05-10"},
-        {"карта": "9876543210987654", "сумма": 1500,
-         "категория": "Развлечения", "дата": "2025-05-12"},]
-
-
+@patch("src.views.get_currency_rates")
+@patch("src.views.get_stock_prices")
+@patch("src.views.get_card_stats")
+@patch("src.views.get_top_transactions")
 @patch("src.views.load_user_settings")
-@patch("src.views.requests.get")
-def test_currencies_and_stocks(mock_get, mock_settings, sample_transactions):
-    """Проверяем формирование данных по валютам и акциям,
-    подменяя внешние API через mock."""
+def test_get_main_page_json(
+    mock_load_settings,
+    mock_top_transactions,
+    mock_card_stats,
+    mock_stocks,
+    mock_currencies,
+    tmp_path
+):
+    """Интеграционный тест: проверяем, что функция корректно
+    формирует JSON, обрабатывает Excel и вызывает все зависимые функции."""
 
-
-    mock_settings.return_value = {
+    mock_load_settings.return_value = {
         "user_currencies": ["USD", "EUR"],
-        "user_stocks": ["AAPL", "AMZN"]
+        "user_stocks": ["AAPL", "AMZN"],
     }
+    mock_currencies.return_value = {"USD": 80, "EUR": 90}
+    mock_stocks.return_value = {"AAPL": 150, "AMZN": 3200}
+    mock_card_stats.return_value = [{"card_last_digits": "1234", "cashback": 5}]
+    mock_top_transactions.return_value = [{"category": "Еда", "amount": 500}]
 
 
-    def mock_api_response(*args, **kwargs):
-        url = args[0] if args else kwargs.get('url', '')
+    df = pd.DataFrame({
+        "Дата операции": ["2025-05-01", "2025-05-10"],
+        "Номер карты": ["1234", "5678"],
+        "Сумма операции": [100, 200],
+        "Категория": ["Еда", "Транспорт"]
+    })
+    excel_path = tmp_path / "transactions.xlsx"
+    df.to_excel(excel_path, index=False)
 
-        mock_response = Mock()
-        mock_response.raise_for_status = Mock()
+    result = get_main_page_json("2025-05-20 12:00:00", str(excel_path))
 
-
-        if "exchangerates_data/latest" in url and "AAPL" not in url:
-            mock_response.json.return_value = {
-                "rates": {"USD": 80.0, "EUR": 90.0}
-            }
-
-        elif "AAPL" in url:
-            mock_response.json.return_value = {"price": 150.0}
-        elif "AMZN" in url:
-            mock_response.json.return_value = {"price": 3200.0}
-        else:
-            mock_response.json.return_value = {}
-
-        return mock_response
-
-    mock_get.side_effect = mock_api_response
-
-    result = get_main_page_json("2025-05-20 12:00:00", sample_transactions)
-
-
+    assert isinstance(result, dict)
+    assert "greeting" in result
+    assert "period" in result
+    assert "cards" in result
+    assert "top_transactions" in result
     assert "currency_rates" in result
-    assert result["currency_rates"]["USD"] == 80.0
-    assert result["currency_rates"]["EUR"] == 90.0
-
     assert "stock_prices" in result
-    assert result["stock_prices"]["AAPL"] == 150.0
-    assert result["stock_prices"]["AMZN"] == 3200.0
 
+    assert result["currency_rates"]["USD"] == 80
+    assert result["stock_prices"]["AAPL"] == 150
+    assert result["cards"][0]["card_last_digits"] == "1234"
+    assert result["top_transactions"][0]["category"] == "Еда"
 
-    assert mock_get.call_count >= 3
+    mock_load_settings.assert_called_once()
+    mock_card_stats.assert_called_once()
+    mock_top_transactions.assert_called_once()
+    mock_currencies.assert_called_once_with(["USD", "EUR"])
+    mock_stocks.assert_called_once_with(["AAPL", "AMZN"])

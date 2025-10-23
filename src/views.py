@@ -1,100 +1,23 @@
-import json
 import logging
 from datetime import datetime
+from typing import Dict, Any
 import pandas as pd
-import requests
-import os
-from typing import Dict, Any, List
-from dotenv import load_dotenv
 
-load_dotenv()
-
-API_KEY = os.getenv("API_KEY")
-API_URL = "https://api.apilayer.com/exchangerates_data/latest"
-HEADERS = {"apikey": API_KEY}
-
+from utils import (
+    get_greeting,
+    get_month_range,
+    load_user_settings,
+    get_card_stats,
+    get_top_transactions,
+    get_currency_rates,
+    get_stock_prices
+)
 
 logging.basicConfig(
     filename="app.log",
     level=logging.INFO,
     format="%(asctime)s - %(levelname)s - %(message)s"
 )
-
-
-def get_greeting(dt: datetime) -> str:
-    """Возвращает приветствие в зависимости от времени суток."""
-    hour = dt.hour
-    if 5 <= hour < 12:
-        return "Доброе утро"
-    elif 12 <= hour < 17:
-        return "Добрый день"
-    elif 17 <= hour < 23:
-        return "Добрый вечер"
-    else:
-        return "Доброй ночи"
-
-
-def get_month_range(date: datetime) -> tuple:
-    """Возвращает диапазон дат (начало месяца, указанная дата)."""
-    start_date = date.replace(day=1, hour=0, minute=0, second=0)
-    return start_date, date
-
-
-def load_user_settings(path: str = "user_settings.json") -> Dict[str, Any]:
-    """Загружает пользовательские настройки валют и акций."""
-    with open(path, "r", encoding="utf-8") as f:
-        return json.load(f)
-
-
-def get_currency_rates(currencies: List[str]) -> Dict[str, Any]:
-    """Получает текущие курсы валют."""
-    try:
-        if not currencies:
-            return {}
-        params = {"base": "USD", "symbols": ",".join(currencies)}
-        response = requests.get(API_URL, params=params, headers=HEADERS)
-        response.raise_for_status()
-        data = response.json()
-        rates = {cur: data["rates"].get(cur, None) for cur in currencies}
-        return {k: v for k, v in rates.items() if v is not None}
-    except Exception as e:
-        logging.error(f"Ошибка при получении курсов валют: {e}")
-        return {cur: None for cur in currencies}
-
-
-def get_stock_prices(stocks: List[str]) -> Dict[str, Any]:
-    """Получает текущие цены акций S&P500."""
-    prices = {}
-    for symbol in stocks:
-        try:
-            response = requests.get(f"{API_URL}/{symbol}", headers=HEADERS)
-            response.raise_for_status()
-            data = response.json()
-            prices[symbol] = data.get("price", None)
-        except Exception as e:
-            logging.error(f"Ошибка при получении данных акции {symbol}: {e}")
-            prices[symbol] = None
-    return prices
-
-
-def get_card_stats(df: pd.DataFrame) -> List[Dict[str, Any]]:
-    """Возвращает статистику по каждой карте."""
-    cards_info = []
-    grouped = df.groupby("card_number")["amount"].sum().reset_index()
-
-    for _, row in grouped.iterrows():
-        card_tail = str(row["card_number"])[-4:]
-        total = round(row["amount"], 2)
-        cashback = round(total // 100, 2)
-        cards_info.append({"card_last_digits": card_tail, "total_spent": total, "cashback": cashback})
-
-    return cards_info
-
-
-def get_top_transactions(df: pd.DataFrame, top_n: int = 5) -> List[Dict[str, Any]]:
-    """Возвращает топ-N транзакций по сумме платежа."""
-    top_df = df.nlargest(top_n, "amount")
-    return top_df.to_dict(orient="records")
 
 
 def get_main_page_json(date_str: str, transactions_path: str | pd.DataFrame | list) -> Dict[str, Any]:
@@ -110,6 +33,20 @@ def get_main_page_json(date_str: str, transactions_path: str | pd.DataFrame | li
         else:
             df = pd.read_excel(transactions_path)
 
+        if df.empty:
+            logging.warning("DataFrame транзакций пуст")
+            return {
+                "greeting": get_greeting(dt),
+                "period": {
+                    "from": start_date.strftime("%Y-%m-%d"),
+                    "to": end_date.strftime("%Y-%m-%d")
+                },
+                "cards": [],
+                "top_transactions": [],
+                "currency_rates": {},
+                "stock_prices": {},
+            }
+
         rename_map = {
             "Дата операции": "date",
             "дата": "date",
@@ -123,13 +60,29 @@ def get_main_page_json(date_str: str, transactions_path: str | pd.DataFrame | li
 
         df = df.rename(columns={col: rename_map.get(col, col) for col in df.columns})
 
+        required_columns = ["date", "card_number", "amount"]
+        missing_columns = [col for col in required_columns if col not in df.columns]
+
+        if missing_columns:
+            error_msg = f"Отсутствуют необходимые колонки: {', '.join(missing_columns)}"
+            logging.error(error_msg)
+            return {"error": error_msg}
 
         df["date"] = pd.to_datetime(df["date"], errors="coerce")
         df["amount"] = pd.to_numeric(df["amount"], errors="coerce")
 
+        initial_count = len(df)
+        df = df.dropna(subset=["date", "amount"])
+        dropped_count = initial_count - len(df)
+
+        if dropped_count > 0:
+            logging.warning(f"Удалено {dropped_count} строк с некорректными данными")
 
         mask = (df["date"] >= start_date) & (df["date"] <= end_date)
-        df_filtered = df.loc[mask]
+        df_filtered = df.loc[mask].copy()
+
+        if df_filtered.empty:
+            logging.info(f"Нет транзакций за период {start_date} - {end_date}")
 
         settings = load_user_settings()
         currencies = settings.get("user_currencies", [])
@@ -137,7 +90,10 @@ def get_main_page_json(date_str: str, transactions_path: str | pd.DataFrame | li
 
         response = {
             "greeting": get_greeting(dt),
-            "period": {"from": start_date.strftime("%Y-%m-%d"), "to": end_date.strftime("%Y-%m-%d")},
+            "period": {
+                "from": start_date.strftime("%Y-%m-%d"),
+                "to": end_date.strftime("%Y-%m-%d")
+            },
             "cards": get_card_stats(df_filtered),
             "top_transactions": get_top_transactions(df_filtered),
             "currency_rates": get_currency_rates(currencies),
@@ -147,6 +103,15 @@ def get_main_page_json(date_str: str, transactions_path: str | pd.DataFrame | li
         logging.info("JSON для главной страницы успешно сформирован")
         return response
 
+    except ValueError as e:
+        error_msg = f"Ошибка формата данных: {e}"
+        logging.error(error_msg)
+        return {"error": error_msg}
+    except FileNotFoundError as e:
+        error_msg = f"Файл не найден: {e}"
+        logging.error(error_msg)
+        return {"error": error_msg}
     except Exception as e:
-        logging.error(f"Ошибка при формировании главной страницы: {e}")
-        return {"error": f"{type(e).__name__}: {e}"}
+        error_msg = f"Неожиданная ошибка при формировании главной страницы: {type(e).__name__}: {e}"
+        logging.error(error_msg)
+        return {"error": error_msg}

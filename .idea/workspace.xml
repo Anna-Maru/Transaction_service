@@ -4,8 +4,12 @@
     <option name="autoReloadType" value="SELECTIVE" />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="8ff8867c-58d2-4be6-ae0b-7aa2ca85968d" name="Changes" comment="Тест исправлен">
+    <list default="true" id="8ff8867c-58d2-4be6-ae0b-7aa2ca85968d" name="Changes" comment="+">
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/utils.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/utils.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/views.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/views.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/tests/test_utils.py" beforeDir="false" afterPath="$PROJECT_DIR$/tests/test_utils.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/tests/test_views.py" beforeDir="false" afterPath="$PROJECT_DIR$/tests/test_views.py" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -31,12 +35,12 @@
   <component name="GithubDefaultAccount">
     <option name="defaultAccountId" value="2c7ebaa7-a7f7-4a66-8d43-57f53c29d8af" />
   </component>
-  <component name="GithubPullRequestsUISettings"><![CDATA[{
-  "selectedUrlAndAccountId": {
-    "url": "git@github.com:Anna-Maru/Transaction_service.git",
-    "accountId": "2c7ebaa7-a7f7-4a66-8d43-57f53c29d8af"
+  <component name="GithubPullRequestsUISettings">{
+  &quot;selectedUrlAndAccountId&quot;: {
+    &quot;url&quot;: &quot;git@github.com:Anna-Maru/Transaction_service.git&quot;,
+    &quot;accountId&quot;: &quot;2c7ebaa7-a7f7-4a66-8d43-57f53c29d8af&quot;
   }
-}]]></component>
+}</component>
   <component name="ProjectColorInfo">{
   &quot;associatedIndex&quot;: 1
 }</component>
@@ -148,11 +152,18 @@
       <option name="project" value="LOCAL" />
       <updated>1761122184852</updated>
     </task>
-    <option name="localTasksCounter" value="9" />
+    <task id="LOCAL-00009" summary="+">
+      <option name="closed" value="true" />
+      <created>1761124577656</created>
+      <option name="number" value="00009" />
+      <option name="presentableId" value="LOCAL-00009" />
+      <option name="project" value="LOCAL" />
+      <updated>1761124577656</updated>
+    </task>
+    <option name="localTasksCounter" value="10" />
     <servers />
   </component>
   <component name="VcsManagerConfiguration">
-    <MESSAGE value="+" />
     <MESSAGE value="Добавлены функции сервиса" />
     <MESSAGE value="Добавлены функции главной" />
     <MESSAGE value="Исправлены тесты" />
@@ -160,6 +171,7 @@
     <MESSAGE value="Добавлены функции для формирования отчетов" />
     <MESSAGE value="Тесты исправлены, добавлены" />
     <MESSAGE value="Тест исправлен" />
-    <option name="LAST_COMMIT_MESSAGE" value="Тест исправлен" />
+    <MESSAGE value="+" />
+    <option name="LAST_COMMIT_MESSAGE" value="+" />
   </component>
 </project>
