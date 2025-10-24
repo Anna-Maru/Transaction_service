@@ -10,7 +10,7 @@ from dotenv import load_dotenv
 load_dotenv()
 
 API_KEY = os.getenv("API_KEY")
-API_URL = "https://api.apilayer.com/exchangerates_data/latest"
+API_URL = "https://www.alphavantage.co/query?function=GLOBAL_QUOTE&symbol={symbol}"
 HEADERS = {"apikey": API_KEY}
 
 
@@ -83,13 +83,7 @@ def get_currency_rates(currencies: List[str]) -> Dict[str, Any]:
 
 
 def get_stock_prices(stocks: List[str]) -> Dict[str, Any]:
-    """
-    Получает текущие цены акций.
-
-    Примечание: exchangerates_data API не поддерживает акции.
-    Эта функция является заглушкой и требует интеграции с реальным API акций
-    (например, Alpha Vantage, Yahoo Finance, Finnhub и т.д.)
-    """
+    """Получает текущие цены акций."""
     prices = {}
 
     if not stocks:
