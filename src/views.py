@@ -10,14 +10,10 @@ from utils import (
     get_card_stats,
     get_top_transactions,
     get_currency_rates,
-    get_stock_prices
+    get_stock_prices,
 )
 
-logging.basicConfig(
-    filename="app.log",
-    level=logging.INFO,
-    format="%(asctime)s - %(levelname)s - %(message)s"
-)
+logging.basicConfig(filename="app.log", level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s")
 
 
 def get_main_page_json(date_str: str, transactions_path: str | pd.DataFrame | list) -> Dict[str, Any]:
@@ -37,10 +33,7 @@ def get_main_page_json(date_str: str, transactions_path: str | pd.DataFrame | li
             logging.warning("DataFrame транзакций пуст")
             return {
                 "greeting": get_greeting(dt),
-                "period": {
-                    "from": start_date.strftime("%Y-%m-%d"),
-                    "to": end_date.strftime("%Y-%m-%d")
-                },
+                "period": {"from": start_date.strftime("%Y-%m-%d"), "to": end_date.strftime("%Y-%m-%d")},
                 "cards": [],
                 "top_transactions": [],
                 "currency_rates": {},
@@ -90,10 +83,7 @@ def get_main_page_json(date_str: str, transactions_path: str | pd.DataFrame | li
 
         response = {
             "greeting": get_greeting(dt),
-            "period": {
-                "from": start_date.strftime("%Y-%m-%d"),
-                "to": end_date.strftime("%Y-%m-%d")
-            },
+            "period": {"from": start_date.strftime("%Y-%m-%d"), "to": end_date.strftime("%Y-%m-%d")},
             "cards": get_card_stats(df_filtered),
             "top_transactions": get_top_transactions(df_filtered),
             "currency_rates": get_currency_rates(currencies),

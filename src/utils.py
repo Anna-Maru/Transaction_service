@@ -97,17 +97,16 @@ def get_stock_prices(stocks: List[str]) -> Dict[str, Any]:
 
     logging.warning("get_stock_prices: https://www.alphavantage.co/query?function=GLOBAL_QUOTE&symbol={symbol}.")
 
-
     STOCK_API_URL = "https://www.alphavantage.co/query?function=GLOBAL_QUOTE&symbol={symbol}"
     for symbol in stocks:
-         try:
-             response = requests.get(f"{STOCK_API_URL}/{symbol}", headers=HEADERS, timeout=10)
-             response.raise_for_status()
-             data = response.json()
-             prices[symbol] = data.get("price", None)
-         except Exception as e:
-             logging.error(f"Ошибка при получении данных акции {symbol}: {e}")
-             prices[symbol] = None
+        try:
+            response = requests.get(f"{STOCK_API_URL}/{symbol}", headers=HEADERS, timeout=10)
+            response.raise_for_status()
+            data = response.json()
+            prices[symbol] = data.get("price", None)
+        except Exception as e:
+            logging.error(f"Ошибка при получении данных акции {symbol}: {e}")
+            prices[symbol] = None
 
     return prices
 
@@ -124,11 +123,7 @@ def get_card_stats(df: pd.DataFrame) -> List[Dict[str, Any]]:
         card_tail = str(row["card_number"])[-4:]
         total = round(row["amount"], 2)
         cashback = round(total * 0.01, 2)
-        cards_info.append({
-            "card_last_digits": card_tail,
-            "total_spent": total,
-            "cashback": cashback
-        })
+        cards_info.append({"card_last_digits": card_tail, "total_spent": total, "cashback": cashback})
 
     return cards_info
 

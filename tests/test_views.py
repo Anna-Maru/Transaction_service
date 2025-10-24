@@ -1,328 +1,348 @@
 import pytest
 import pandas as pd
-import json
-import os
-from datetime import datetime
-from unittest.mock import patch, mock_open, MagicMock
-import requests
+from unittest.mock import patch
 
-from utils import (
-    get_greeting,
-    get_month_range,
-    load_user_settings,
-    get_currency_rates,
-    get_stock_prices,
-    get_card_stats,
-    get_top_transactions
-)
+from src.views import get_main_page_json
 
 
-class TestGetGreeting:
-    """Тесты для функции get_greeting"""
+class TestGetMainPageJson:
+    """Тесты для функции get_main_page_json"""
 
-    @pytest.mark.parametrize("hour, expected", [
-        (5, "Доброе утро"),
-        (8, "Доброе утро"),
-        (11, "Доброе утро"),
-        (12, "Добрый день"),
-        (14, "Добрый день"),
-        (16, "Добрый день"),
-        (17, "Добрый вечер"),
-        (20, "Добрый вечер"),
-        (22, "Добрый вечер"),
-        (23, "Доброй ночи"),
-        (0, "Доброй ночи"),
-        (3, "Доброй ночи"),
-        (4, "Доброй ночи"),
-    ])
-    def test_greeting_by_hour(self, hour, expected):
-        """Проверка приветствий в зависимости от времени суток"""
-        dt = datetime(2024, 1, 1, hour, 0, 0)
-        assert get_greeting(dt) == expected
-
-
-class TestGetMonthRange:
-    """Тесты для функции get_month_range"""
-
-    @pytest.mark.parametrize("date_str, expected_start, expected_end", [
-        ("2024-01-15 14:30:45", "2024-01-01 00:00:00", "2024-01-15 14:30:45"),
-        ("2024-02-29 23:59:59", "2024-02-01 00:00:00", "2024-02-29 23:59:59"),
-        ("2024-12-31 12:00:00", "2024-12-01 00:00:00", "2024-12-31 12:00:00"),
-        ("2024-06-01 00:00:00", "2024-06-01 00:00:00", "2024-06-01 00:00:00"),
-    ])
-    def test_month_range(self, date_str, expected_start, expected_end):
-        """Проверка корректности диапазона месяца"""
-        dt = datetime.strptime(date_str, "%Y-%m-%d %H:%M:%S")
-        start, end = get_month_range(dt)
-
-        expected_start_dt = datetime.strptime(expected_start, "%Y-%m-%d %H:%M:%S")
-        expected_end_dt = datetime.strptime(expected_end, "%Y-%m-%d %H:%M:%S")
-
-        assert start == expected_start_dt
-        assert end == expected_end_dt
-
-    def test_month_range_preserves_microseconds(self):
-        """Проверка, что микросекунды сбрасываются"""
-        dt = datetime(2024, 1, 15, 14, 30, 45, 123456)
-        start, end = get_month_range(dt)
-        assert start.microsecond == 0
-        assert end.microsecond == 123456
-
-
-class TestLoadUserSettings:
-    """Тесты для функции load_user_settings"""
-
-    def test_load_existing_file(self, tmp_path):
-        """Загрузка существующего файла с настройками"""
-        settings_file = tmp_path / "user_settings.json"
-        test_data = {"user_currencies": ["EUR", "GBP"], "user_stocks": ["AAPL", "GOOGL"]}
-        settings_file.write_text(json.dumps(test_data), encoding="utf-8")
-
-        result = load_user_settings(str(settings_file))
-        assert result == test_data
-
-    def test_load_nonexistent_file(self):
-        """Попытка загрузки несуществующего файла"""
-        result = load_user_settings("nonexistent_file.json")
-        assert result == {"user_currencies": [], "user_stocks": []}
-
-    def test_load_invalid_json(self, tmp_path):
-        """Загрузка файла с невалидным JSON"""
-        settings_file = tmp_path / "invalid.json"
-        settings_file.write_text("not a valid json{", encoding="utf-8")
-
-        result = load_user_settings(str(settings_file))
-        assert result == {"user_currencies": [], "user_stocks": []}
-
-    def test_load_empty_file(self, tmp_path):
-        """Загрузка пустого файла"""
-        settings_file = tmp_path / "empty.json"
-        settings_file.write_text("", encoding="utf-8")
-
-        result = load_user_settings(str(settings_file))
-        assert result == {"user_currencies": [], "user_stocks": []}
-
-
-class TestGetCurrencyRates:
-    """Тесты для функции get_currency_rates"""
-
-    @pytest.mark.parametrize("currencies, api_response, expected", [
-        (
-                ["EUR", "GBP"],
-                {"rates": {"EUR": 0.85, "GBP": 0.73}},
-                {"EUR": 0.85, "GBP": 0.73}
-        ),
-        (
-                ["USD", "JPY"],
-                {"rates": {"USD": 1.0, "JPY": 110.5}},
-                {"USD": 1.0, "JPY": 110.5}
-        ),
-        (
-                [],
-                {},
-                {}
-        ),
-    ])
-    @patch('utils.requests.get')
-    @patch.dict(os.environ, {'API_KEY': 'test_api_key'})
-    def test_get_currency_rates_success(self, mock_get, currencies, api_response, expected):
-        """Успешное получение курсов валют"""
-        mock_response = MagicMock()
-        mock_response.json.return_value = api_response
-        mock_response.raise_for_status = MagicMock()
-        mock_get.return_value = mock_response
-
-        if currencies:
-            result = get_currency_rates(currencies)
-            assert result == expected
-        else:
-            result = get_currency_rates(currencies)
-            assert result == {}
-
-    @patch('utils.requests.get')
-    @patch.dict(os.environ, {'API_KEY': 'test_api_key'})
-    def test_get_currency_rates_partial_data(self, mock_get):
-        """Получение данных только для части валют"""
-        mock_response = MagicMock()
-        mock_response.json.return_value = {"rates": {"EUR": 0.85}}
-        mock_response.raise_for_status = MagicMock()
-        mock_get.return_value = mock_response
-
-        result = get_currency_rates(["EUR", "GBP"])
-        assert result == {"EUR": 0.85}
-
-    @patch('utils.requests.get')
-    @patch.dict(os.environ, {'API_KEY': 'test_api_key'})
-    def test_get_currency_rates_timeout(self, mock_get):
-        """Обработка таймаута при запросе"""
-        mock_get.side_effect = requests.exceptions.Timeout()
-
-        result = get_currency_rates(["EUR", "GBP"])
-        assert result == {"EUR": None, "GBP": None}
-
-    @patch('utils.requests.get')
-    @patch.dict(os.environ, {'API_KEY': 'test_api_key'})
-    def test_get_currency_rates_request_exception(self, mock_get):
-        """Обработка ошибки запроса"""
-        mock_get.side_effect = requests.exceptions.RequestException("API Error")
-
-        result = get_currency_rates(["EUR"])
-        assert result == {"EUR": None}
-
-    @patch.dict(os.environ, {}, clear=True)
-    def test_get_currency_rates_no_api_key(self):
-        """Отсутствие API ключа"""
-        result = get_currency_rates(["EUR"])
-        assert result == {"EUR": None}
-
-    @patch('utils.requests.get')
-    @patch.dict(os.environ, {'API_KEY': 'test_api_key'})
-    def test_get_currency_rates_invalid_response_format(self, mock_get):
-        """Неожиданный формат ответа API"""
-        mock_response = MagicMock()
-        mock_response.json.return_value = {"unexpected": "format"}
-        mock_response.raise_for_status = MagicMock()
-        mock_get.return_value = mock_response
-
-        result = get_currency_rates(["EUR"])
-        assert result == {"EUR": None}
-
-
-class TestGetStockPrices:
-    """Тесты для функции get_stock_prices"""
-
-    def test_get_stock_prices_empty_list(self):
-        """Запрос без акций"""
-        result = get_stock_prices([])
-        assert result == {}
-
-    @pytest.mark.parametrize("stocks", [
-        (["AAPL"]),
-        (["AAPL", "GOOGL", "MSFT"]),
-        (["TSLA", "AMZN"]),
-    ])
-    def test_get_stock_prices_returns_none(self, stocks):
-        """Функция возвращает None для всех акций (заглушка)"""
-        result = get_stock_prices(stocks)
-        assert all(value is None for value in result.values())
-        assert set(result.keys()) == set(stocks)
-
-
-class TestGetCardStats:
-    """Тесты для функции get_card_stats"""
-
-    def test_card_stats_empty_dataframe(self):
-        """Статистика для пустого DataFrame"""
-        df = pd.DataFrame(columns=["card_number", "amount"])
-        result = get_card_stats(df)
-        assert result == []
-
-    @pytest.mark.parametrize("transactions, expected", [
-        (
-                [
-                    {"card_number": "*7197", "amount": 100.0},
-                    {"card_number": "*7197", "amount": 50.0},
-                ],
-                [{"card_last_digits": "7197", "total_spent": 150.0, "cashback": 1.5}]
-        ),
-        (
-                [
-                    {"card_number": "*1234", "amount": 1000.0},
-                    {"card_number": "*5678", "amount": 500.0},
-                ],
-                [
-                    {"card_last_digits": "1234", "total_spent": 1000.0, "cashback": 10.0},
-                    {"card_last_digits": "5678", "total_spent": 500.0, "cashback": 5.0}
-                ]
-        ),
-        (
-                [
-                    {"card_number": "*9999", "amount": 99.99},
-                ],
-                [{"card_last_digits": "9999", "total_spent": 99.99, "cashback": 1.0}]
-        ),
-    ])
-    def test_card_stats_calculations(self, transactions, expected):
-        """Проверка корректности расчётов статистики"""
-        df = pd.DataFrame(transactions)
-        result = get_card_stats(df)
-
-        result_sorted = sorted(result, key=lambda x: x["card_last_digits"])
-        expected_sorted = sorted(expected, key=lambda x: x["card_last_digits"])
-
-        assert result_sorted == expected_sorted
-
-    def test_card_stats_multiple_transactions(self):
-        """Множество транзакций по разным картам"""
-        df = pd.DataFrame({
-            "card_number": ["*1111", "*2222", "*1111", "*3333", "*2222"],
-            "amount": [100, 200, 150, 300, 50]
+    @pytest.fixture
+    def sample_transactions_df(self):
+        """Фикстура с тестовыми транзакциями"""
+        return pd.DataFrame({
+            "date": pd.date_range("2024-01-01", periods=10),
+            "card_number": ["*1234", "*5678", "*1234", "*5678", "*1234",
+                            "*5678", "*1234", "*5678", "*1234", "*5678"],
+            "amount": [100, 200, 150, 250, 300, 350, 400, 450, 500, 550],
+            "category": ["Food", "Transport", "Food", "Shopping", "Food",
+                         "Transport", "Food", "Shopping", "Food", "Transport"]
         })
 
-        result = get_card_stats(df)
-        assert len(result) == 3
+    @pytest.fixture
+    def sample_transactions_list(self):
+        """Фикстура со списком транзакций"""
+        return [
+            {"date": "2024-01-01", "card_number": "*1234", "amount": 100, "category": "Food"},
+            {"date": "2024-01-02", "card_number": "*5678", "amount": 200, "category": "Transport"},
+            {"date": "2024-01-03", "card_number": "*1234", "amount": 150, "category": "Food"},
+        ]
 
-        totals = {item["card_last_digits"]: item["total_spent"] for item in result}
-        assert totals["1111"] == 250.0
-        assert totals["2222"] == 250.0
-        assert totals["3333"] == 300.0
+    @pytest.fixture
+    def sample_settings(self):
+        """Фикстура с пользовательскими настройками"""
+        return {
+            "user_currencies": ["EUR", "GBP"],
+            "user_stocks": ["AAPL", "GOOGL"]
+        }
 
+    @pytest.fixture
+    def mock_utils(self):
+        """Мокирование функций из utils"""
+        with patch('views.get_greeting') as mock_greeting, \
+                patch('views.load_user_settings') as mock_settings, \
+                patch('views.get_currency_rates') as mock_currency, \
+                patch('views.get_stock_prices') as mock_stocks:
+            mock_greeting.return_value = "Добрый день"
+            mock_settings.return_value = {"user_currencies": ["EUR"], "user_stocks": ["AAPL"]}
+            mock_currency.return_value = {"EUR": 0.85}
+            mock_stocks.return_value = {"AAPL": None}
 
-class TestGetTopTransactions:
-    """Тесты для функции get_top_transactions"""
+            yield {
+                "greeting": mock_greeting,
+                "settings": mock_settings,
+                "currency": mock_currency,
+                "stocks": mock_stocks
+            }
 
-    def test_top_transactions_empty_dataframe(self):
-        """Топ транзакций для пустого DataFrame"""
-        df = pd.DataFrame(columns=["amount"])
-        result = get_top_transactions(df)
-        assert result == []
+    def test_basic_functionality_with_dataframe(self, sample_transactions_df, mock_utils):
+        """Базовый тест с DataFrame"""
+        result = get_main_page_json("2024-01-15 14:30:00", sample_transactions_df)
 
-    def test_top_transactions_less_than_top_n(self):
-        """Транзакций меньше, чем запрошено"""
+        assert "error" not in result
+        assert result["greeting"] == "Добрый день"
+        assert "period" in result
+        assert result["period"]["from"] == "2024-01-01"
+        assert result["period"]["to"] == "2024-01-15"
+        assert "cards" in result
+        assert "top_transactions" in result
+        assert "currency_rates" in result
+        assert "stock_prices" in result
+
+    def test_with_list_input(self, sample_transactions_list, mock_utils):
+        """Тест с входными данными в виде списка"""
+        result = get_main_page_json("2024-01-15 12:00:00", sample_transactions_list)
+
+        assert "error" not in result
+        assert isinstance(result["cards"], list)
+        assert isinstance(result["top_transactions"], list)
+
+    @patch('views.pd.read_excel')
+    def test_with_file_path(self, mock_read_excel, sample_transactions_df, mock_utils):
+        """Тест с путём к файлу Excel"""
+        mock_read_excel.return_value = sample_transactions_df
+
+        result = get_main_page_json("2024-01-15 12:00:00", "transactions.xlsx")
+
+        mock_read_excel.assert_called_once_with("transactions.xlsx")
+        assert "error" not in result
+
+    @pytest.mark.parametrize("date_str, expected_period", [
+        ("2024-01-15 14:30:00", {"from": "2024-01-01", "to": "2024-01-15"}),
+        ("2024-02-29 23:59:59", {"from": "2024-02-01", "to": "2024-02-29"}),
+        ("2024-12-31 00:00:00", {"from": "2024-12-01", "to": "2024-12-31"}),
+        ("2024-06-01 12:00:00", {"from": "2024-06-01", "to": "2024-06-01"}),
+    ])
+    def test_date_ranges(self, date_str, expected_period, sample_transactions_df, mock_utils):
+        """Проверка различных диапазонов дат"""
+        result = get_main_page_json(date_str, sample_transactions_df)
+
+        assert result["period"] == expected_period
+
+    def test_empty_dataframe(self, mock_utils):
+        """Тест с пустым DataFrame"""
+        empty_df = pd.DataFrame(columns=["date", "card_number", "amount", "category"])
+
+        result = get_main_page_json("2024-01-15 12:00:00", empty_df)
+
+        assert "error" not in result
+        assert result["cards"] == []
+        assert result["top_transactions"] == []
+        assert result["currency_rates"] == {"EUR": 0.85}
+        assert result["stock_prices"] == {"AAPL": None}
+
+    def test_column_renaming_cyrillic(self, mock_utils):
+        """Проверка переименования колонок на кириллице"""
         df = pd.DataFrame({
-            "amount": [100, 200, 50],
-            "description": ["A", "B", "C"]
+            "Дата операции": ["2024-01-01", "2024-01-02"],
+            "Номер карты": ["*1234", "*5678"],
+            "Сумма операции": [100, 200],
+            "Категория": ["Food", "Transport"]
         })
 
-        result = get_top_transactions(df, top_n=5)
-        assert len(result) == 3
-        assert result[0]["amount"] == 200
-        assert result[1]["amount"] == 100
-        assert result[2]["amount"] == 50
+        result = get_main_page_json("2024-01-15 12:00:00", df)
 
-    @pytest.mark.parametrize("top_n", [1, 3, 5, 10])
-    def test_top_transactions_various_limits(self, top_n):
-        """Проверка различных значений top_n"""
+        assert "error" not in result
+        assert len(result["cards"]) == 2
+
+    def test_column_renaming_lowercase(self, mock_utils):
+        """Проверка переименования колонок в нижнем регистре"""
         df = pd.DataFrame({
-            "amount": [100, 500, 250, 750, 150, 900, 300, 50, 600, 400]
+            "дата": ["2024-01-01", "2024-01-02"],
+            "карта": ["*1234", "*5678"],
+            "сумма": [100, 200],
+            "категория": ["Food", "Transport"]
         })
 
-        result = get_top_transactions(df, top_n=top_n)
-        assert len(result) == min(top_n, len(df))
+        result = get_main_page_json("2024-01-15 12:00:00", df)
 
-        # Проверяем, что результат отсортирован по убыванию
-        amounts = [item["amount"] for item in result]
-        assert amounts == sorted(amounts, reverse=True)
+        assert "error" not in result
+        assert len(result["cards"]) == 2
 
-    def test_top_transactions_default_top_5(self):
-        """Проверка значения по умолчанию (топ-5)"""
+    def test_missing_required_columns(self, mock_utils):
+        """Тест с отсутствующими обязательными колонками"""
         df = pd.DataFrame({
-            "amount": [100, 200, 300, 400, 500, 600, 700],
-            "date": pd.date_range("2024-01-01", periods=7)
+            "date": ["2024-01-01"],
+            "amount": [100]
         })
 
-        result = get_top_transactions(df)
-        assert len(result) == 5
-        assert result[0]["amount"] == 700
-        assert result[4]["amount"] == 300
+        result = get_main_page_json("2024-01-15 12:00:00", df)
 
-    def test_top_transactions_with_duplicates(self):
-        """Транзакции с одинаковыми суммами"""
+        assert "error" in result
+        assert "card_number" in result["error"]
+
+    def test_invalid_data_types(self, mock_utils):
+        """Тест с некорректными типами данных"""
         df = pd.DataFrame({
-            "amount": [100, 200, 200, 300, 100],
-            "description": ["A", "B", "C", "D", "E"]
+            "date": ["invalid_date", "2024-01-02", "2024-01-03"],
+            "card_number": ["*1234", "*5678", "*9999"],
+            "amount": ["not_a_number", 200, 300],
+            "category": ["Food", "Transport", "Shopping"]
         })
 
-        result = get_top_transactions(df, top_n=3)
-        assert len(result) == 3
-        assert result[0]["amount"] == 300
+        result = get_main_page_json("2024-01-15 12:00:00", df)
+
+        assert "error" not in result
+        assert len(result["cards"]) > 0
+
+    def test_filtering_by_date_range(self, mock_utils):
+        """Проверка фильтрации по периоду"""
+        df = pd.DataFrame({
+            "date": ["2023-12-31", "2024-01-01", "2024-01-15", "2024-02-01"],
+            "card_number": ["*1234", "*1234", "*1234", "*1234"],
+            "amount": [100, 200, 300, 400],
+            "category": ["A", "B", "C", "D"]
+        })
+
+        result = get_main_page_json("2024-01-20 12:00:00", df)
+
+        assert "error" not in result
+        card = result["cards"][0]
+        assert card["total_spent"] == 500.0
+
+    def test_no_transactions_in_period(self, mock_utils):
+        """Тест когда нет транзакций в указанном периоде"""
+        df = pd.DataFrame({
+            "date": ["2023-12-31", "2024-02-01"],
+            "card_number": ["*1234", "*5678"],
+            "amount": [100, 200],
+            "category": ["A", "B"]
+        })
+
+        result = get_main_page_json("2024-01-15 12:00:00", df)
+
+        assert "error" not in result
+        assert result["cards"] == []
+        assert result["top_transactions"] == []
+
+    def test_invalid_date_format(self, sample_transactions_df, mock_utils):
+        """Тест с некорректным форматом даты"""
+        result = get_main_page_json("invalid-date", sample_transactions_df)
+
+        assert "error" in result
+        assert "Ошибка формата данных" in result["error"]
+
+    @patch('views.pd.read_excel')
+    def test_file_not_found(self, mock_read_excel, mock_utils):
+        """Тест с несуществующим файлом"""
+        mock_read_excel.side_effect = FileNotFoundError("File not found")
+
+        result = get_main_page_json("2024-01-15 12:00:00", "nonexistent.xlsx")
+
+        assert "error" in result
+        assert "Файл не найден" in result["error"]
+
+    def test_integration_with_card_stats(self, mock_utils):
+        """Интеграционный тест с расчётом статистики карт"""
+        df = pd.DataFrame({
+            "date": ["2024-01-01", "2024-01-02", "2024-01-03"],
+            "card_number": ["*1234", "*1234", "*5678"],
+            "amount": [100, 150, 200],
+            "category": ["A", "B", "C"]
+        })
+
+        result = get_main_page_json("2024-01-15 12:00:00", df)
+
+        assert "error" not in result
+        assert len(result["cards"]) == 2
+
+        card_1234 = [c for c in result["cards"] if c["card_last_digits"] == "1234"][0]
+        assert card_1234["total_spent"] == 250.0
+        assert card_1234["cashback"] == 2.5
+
+    def test_integration_with_top_transactions(self, mock_utils):
+        """Интеграционный тест с топ транзакциями"""
+        df = pd.DataFrame({
+            "date": ["2024-01-01", "2024-01-02", "2024-01-03", "2024-01-04"],
+            "card_number": ["*1234", "*5678", "*1234", "*5678"],
+            "amount": [500, 300, 700, 400],
+            "category": ["A", "B", "C", "D"]
+        })
+
+        result = get_main_page_json("2024-01-15 12:00:00", df)
+
+        assert "error" not in result
+        assert len(result["top_transactions"]) == 4
+        assert result["top_transactions"][0]["amount"] == 700
+        assert result["top_transactions"][1]["amount"] == 500
+
+    @pytest.mark.parametrize("currencies, stocks", [
+        (["EUR", "GBP"], ["AAPL"]),
+        ([], []),
+        (["USD"], ["GOOGL", "MSFT"]),
+    ])
+    def test_user_settings_integration(self, currencies, stocks, sample_transactions_df):
+        """Тест интеграции с пользовательскими настройками"""
+        with patch('views.load_user_settings') as mock_settings, \
+                patch('views.get_greeting') as mock_greeting, \
+                patch('views.get_currency_rates') as mock_currency, \
+                patch('views.get_stock_prices') as mock_stocks:
+            mock_greeting.return_value = "Добрый день"
+            mock_settings.return_value = {
+                "user_currencies": currencies,
+                "user_stocks": stocks
+            }
+            mock_currency.return_value = {cur: 0.85 for cur in currencies}
+            mock_stocks.return_value = {stock: None for stock in stocks}
+
+            result = get_main_page_json("2024-01-15 12:00:00", sample_transactions_df)
+
+            mock_currency.assert_called_once_with(currencies)
+            mock_stocks.assert_called_once_with(stocks)
+
+            assert len(result["currency_rates"]) == len(currencies)
+            assert len(result["stock_prices"]) == len(stocks)
+
+    def test_greeting_time_variations(self, sample_transactions_df):
+        """Проверка различных приветствий в зависимости от времени"""
+        with patch('views.load_user_settings') as mock_settings, \
+                patch('views.get_currency_rates') as mock_currency, \
+                patch('views.get_stock_prices') as mock_stocks:
+            mock_settings.return_value = {"user_currencies": [], "user_stocks": []}
+            mock_currency.return_value = {}
+            mock_stocks.return_value = {}
+
+            result_morning = get_main_page_json("2024-01-15 08:00:00", sample_transactions_df)
+            assert result_morning["greeting"] == "Доброе утро"
+
+            result_afternoon = get_main_page_json("2024-01-15 14:00:00", sample_transactions_df)
+            assert result_afternoon["greeting"] == "Добрый день"
+
+            result_evening = get_main_page_json("2024-01-15 19:00:00", sample_transactions_df)
+            assert result_evening["greeting"] == "Добрый вечер"
+
+            result_night = get_main_page_json("2024-01-15 01:00:00", sample_transactions_df)
+            assert result_night["greeting"] == "Доброй ночи"
+
+    def test_multiple_cards_statistics(self, mock_utils):
+        """Тест статистики для множества карт"""
+        df = pd.DataFrame({
+            "date": pd.date_range("2024-01-01", periods=15),
+            "card_number": ["*1111", "*2222", "*3333"] * 5,
+            "amount": [100, 200, 300] * 5,
+            "category": ["A"] * 15
+        })
+
+        result = get_main_page_json("2024-01-20 12:00:00", df)
+
+        assert "error" not in result
+        assert len(result["cards"]) == 3
+
+        totals = {card["card_last_digits"]: card["total_spent"] for card in result["cards"]}
+        assert totals["1111"] == 500.0
+        assert totals["2222"] == 1000.0
+        assert totals["3333"] == 1500.0
+
+    def test_edge_case_single_transaction(self, mock_utils):
+        """Тест с одной транзакцией"""
+        df = pd.DataFrame({
+            "date": ["2024-01-15"],
+            "card_number": ["*9999"],
+            "amount": [999.99],
+            "category": ["Test"]
+        })
+
+        result = get_main_page_json("2024-01-20 12:00:00", df)
+
+        assert "error" not in result
+        assert len(result["cards"]) == 1
+        assert result["cards"][0]["total_spent"] == 999.99
+        assert result["cards"][0]["cashback"] == 10.0
+        assert len(result["top_transactions"]) == 1
+
+    def test_large_amounts(self, mock_utils):
+        """Тест с большими суммами"""
+        df = pd.DataFrame({
+            "date": ["2024-01-01", "2024-01-02"],
+            "card_number": ["*1234", "*1234"],
+            "amount": [999999.99, 1000000.00],
+            "category": ["A", "B"]
+        })
+
+        result = get_main_page_json("2024-01-15 12:00:00", df)
+
+        assert "error" not in result
+        card = result["cards"][0]
+        assert card["total_spent"] == 1999999.99
+        assert card["cashback"] == 20000.0

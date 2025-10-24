@@ -4,9 +4,7 @@
     <option name="autoReloadType" value="SELECTIVE" />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="8ff8867c-58d2-4be6-ae0b-7aa2ca85968d" name="Changes" comment="переделаны функции, тесты">
-      <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-    </list>
+    <list default="true" id="8ff8867c-58d2-4be6-ae0b-7aa2ca85968d" name="Changes" comment="Добавлены тесты" />
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
     <option name="HIGHLIGHT_NON_ACTIVE_CHANGELIST" value="false" />
@@ -164,7 +162,15 @@
       <option name="project" value="LOCAL" />
       <updated>1761226133704</updated>
     </task>
-    <option name="localTasksCounter" value="11" />
+    <task id="LOCAL-00011" summary="Добавлены тесты">
+      <option name="closed" value="true" />
+      <created>1761304077968</created>
+      <option name="number" value="00011" />
+      <option name="presentableId" value="LOCAL-00011" />
+      <option name="project" value="LOCAL" />
+      <updated>1761304077968</updated>
+    </task>
+    <option name="localTasksCounter" value="12" />
     <servers />
   </component>
   <component name="VcsManagerConfiguration">
@@ -177,6 +183,7 @@
     <MESSAGE value="Тест исправлен" />
     <MESSAGE value="+" />
     <MESSAGE value="переделаны функции, тесты" />
-    <option name="LAST_COMMIT_MESSAGE" value="переделаны функции, тесты" />
+    <MESSAGE value="Добавлены тесты" />
+    <option name="LAST_COMMIT_MESSAGE" value="Добавлены тесты" />
   </component>
 </project>

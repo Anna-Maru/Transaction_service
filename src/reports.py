@@ -7,6 +7,7 @@ import os
 
 def save_report(file_name: Optional[str] = None):
     """Декоратор для функций, формирующих отчёты."""
+
     def decorator(func: Callable):
         @functools.wraps(func)
         def wrapper(*args, **kwargs):
@@ -24,13 +25,12 @@ def save_report(file_name: Optional[str] = None):
             return result
 
         return wrapper
+
     return decorator
 
 
 @save_report()
-def spending_by_category(transactions: pd.DataFrame,
-                         category: str,
-                         date: Optional[str] = None) -> pd.DataFrame:
+def spending_by_category(transactions: pd.DataFrame, category: str, date: Optional[str] = None) -> pd.DataFrame:
     """Возвращает траты по заданной категории за последние 3 месяца."""
     if date:
         end_date = pd.to_datetime(date)
@@ -51,8 +51,7 @@ def spending_by_category(transactions: pd.DataFrame,
 
 
 @save_report("report_weekday.csv")
-def spending_by_weekday(transactions: pd.DataFrame,
-                        date: Optional[str] = None) -> pd.DataFrame:
+def spending_by_weekday(transactions: pd.DataFrame, date: Optional[str] = None) -> pd.DataFrame:
     """Возвращает средние траты в каждый день недели за последние 3 месяца."""
     if date:
         end_date = pd.to_datetime(date)
