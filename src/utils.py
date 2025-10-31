@@ -33,7 +33,7 @@ def get_month_range(date: datetime) -> tuple:
     return start_date, date
 
 
-def load_user_settings(path: str = "user_settings.json") -> Dict[str, Any]:
+def load_user_settings(path: str = "data/user_settings.json") -> Dict[str, Any]:
     """Загружает пользовательские настройки валют и акций."""
     try:
         if not os.path.exists(path):

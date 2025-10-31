@@ -10,7 +10,7 @@ from src.utils import (
     get_top_transactions,
 )
 from src.views import get_main_page_json
-
+from config import FILE_JSON, FILE_XLSX
 
 def main():
     """Основная функция запуска проекта"""
@@ -23,8 +23,8 @@ def main():
     greeting = get_greeting(now)
     print(f"{greeting}! Сегодня: {now.strftime('%d.%m.%Y %H:%M')}\n")
 
-    settings_path = Path("data/user_settings.json")
-    user_settings = load_user_settings(settings_path)
+    #settings_path = Path(FILE_JSON)
+    user_settings = load_user_settings(FILE_JSON)
     print("Настройки пользователя:")
     print(json.dumps(user_settings, indent=4, ensure_ascii=False))
     print()
