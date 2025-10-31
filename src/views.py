@@ -29,6 +29,10 @@ def get_main_page_json(date_str: str, transactions_path: str | pd.DataFrame | li
         else:
             df = pd.read_excel(transactions_path)
 
+        settings = load_user_settings()
+        currencies = settings.get("user_currencies", [])
+        stocks = settings.get("user_stocks", [])
+
         if df.empty:
             logging.warning("DataFrame транзакций пуст")
             return {
@@ -36,8 +40,8 @@ def get_main_page_json(date_str: str, transactions_path: str | pd.DataFrame | li
                 "period": {"from": start_date.strftime("%Y-%m-%d"), "to": end_date.strftime("%Y-%m-%d")},
                 "cards": [],
                 "top_transactions": [],
-                "currency_rates": {},
-                "stock_prices": {},
+                "currency_rates": get_currency_rates(currencies),
+                "stock_prices": get_stock_prices(stocks),
             }
 
         rename_map = {
@@ -50,12 +54,10 @@ def get_main_page_json(date_str: str, transactions_path: str | pd.DataFrame | li
             "Категория": "category",
             "категория": "category",
         }
-
         df = df.rename(columns={col: rename_map.get(col, col) for col in df.columns})
 
         required_columns = ["date", "card_number", "amount"]
         missing_columns = [col for col in required_columns if col not in df.columns]
-
         if missing_columns:
             error_msg = f"Отсутствуют необходимые колонки: {', '.join(missing_columns)}"
             logging.error(error_msg)
@@ -67,7 +69,6 @@ def get_main_page_json(date_str: str, transactions_path: str | pd.DataFrame | li
         initial_count = len(df)
         df = df.dropna(subset=["date", "amount"])
         dropped_count = initial_count - len(df)
-
         if dropped_count > 0:
             logging.warning(f"Удалено {dropped_count} строк с некорректными данными")
 
@@ -76,10 +77,6 @@ def get_main_page_json(date_str: str, transactions_path: str | pd.DataFrame | li
 
         if df_filtered.empty:
             logging.info(f"Нет транзакций за период {start_date} - {end_date}")
-
-        settings = load_user_settings()
-        currencies = settings.get("user_currencies", [])
-        stocks = settings.get("user_stocks", [])
 
         response = {
             "greeting": get_greeting(dt),

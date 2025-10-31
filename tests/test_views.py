@@ -59,9 +59,12 @@ class TestGetMainPageJson:
     @pytest.fixture
     def mock_utils(self):
         """Мокирование функций из utils"""
-        with patch("views.get_greeting") as mock_greeting, patch("views.load_user_settings") as mock_settings, patch(
-            "views.get_currency_rates"
-        ) as mock_currency, patch("views.get_stock_prices") as mock_stocks:
+        with (
+            patch("src.views.get_greeting") as mock_greeting,
+            patch("src.views.load_user_settings") as mock_settings,
+            patch("src.views.get_currency_rates") as mock_currency,
+            patch("src.views.get_stock_prices") as mock_stocks,
+        ):
             mock_greeting.return_value = "Добрый день"
             mock_settings.return_value = {"user_currencies": ["EUR"], "user_stocks": ["AAPL"]}
             mock_currency.return_value = {"EUR": 0.85}
@@ -96,7 +99,7 @@ class TestGetMainPageJson:
         assert isinstance(result["cards"], list)
         assert isinstance(result["top_transactions"], list)
 
-    @patch("views.pd.read_excel")
+    @patch("src.views.pd.read_excel")
     def test_with_file_path(self, mock_read_excel, sample_transactions_df, mock_utils):
         """Тест с путём к файлу Excel"""
         mock_read_excel.return_value = sample_transactions_df
@@ -231,7 +234,7 @@ class TestGetMainPageJson:
         assert "error" in result
         assert "Ошибка формата данных" in result["error"]
 
-    @patch("views.pd.read_excel")
+    @patch("src.views.pd.read_excel")
     def test_file_not_found(self, mock_read_excel, mock_utils):
         """Тест с несуществующим файлом"""
         mock_read_excel.side_effect = FileNotFoundError("File not found")
@@ -289,9 +292,12 @@ class TestGetMainPageJson:
     )
     def test_user_settings_integration(self, currencies, stocks, sample_transactions_df):
         """Тест интеграции с пользовательскими настройками"""
-        with patch("views.load_user_settings") as mock_settings, patch("views.get_greeting") as mock_greeting, patch(
-            "views.get_currency_rates"
-        ) as mock_currency, patch("views.get_stock_prices") as mock_stocks:
+        with (
+            patch("src.views.load_user_settings") as mock_settings,
+            patch("src.views.get_greeting") as mock_greeting,
+            patch("src.views.get_currency_rates") as mock_currency,
+            patch("src.views.get_stock_prices") as mock_stocks,
+        ):
             mock_greeting.return_value = "Добрый день"
             mock_settings.return_value = {"user_currencies": currencies, "user_stocks": stocks}
             mock_currency.return_value = {cur: 0.85 for cur in currencies}
@@ -307,9 +313,11 @@ class TestGetMainPageJson:
 
     def test_greeting_time_variations(self, sample_transactions_df):
         """Проверка различных приветствий в зависимости от времени"""
-        with patch("views.load_user_settings") as mock_settings, patch(
-            "views.get_currency_rates"
-        ) as mock_currency, patch("views.get_stock_prices") as mock_stocks:
+        with (
+            patch("src.views.load_user_settings") as mock_settings,
+            patch("src.views.get_currency_rates") as mock_currency,
+            patch("src.views.get_stock_prices") as mock_stocks,
+        ):
             mock_settings.return_value = {"user_currencies": [], "user_stocks": []}
             mock_currency.return_value = {}
             mock_stocks.return_value = {}

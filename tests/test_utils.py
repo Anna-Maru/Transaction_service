@@ -120,7 +120,7 @@ class TestGetCurrencyRates:
             ([], {}, {}),
         ],
     )
-    @patch("utils.requests.get")
+    @patch("src.utils.requests.get")
     @patch.dict(os.environ, {"API_KEY": "test_api_key"})
     def test_get_currency_rates_success(self, mock_get, currencies, api_response, expected):
         """Успешное получение курсов валют"""
@@ -136,7 +136,7 @@ class TestGetCurrencyRates:
             result = get_currency_rates(currencies)
             assert result == {}
 
-    @patch("utils.requests.get")
+    @patch("src.utils.requests.get")
     @patch.dict(os.environ, {"API_KEY": "test_api_key"})
     def test_get_currency_rates_partial_data(self, mock_get):
         """Получение данных только для части валют"""
@@ -148,7 +148,7 @@ class TestGetCurrencyRates:
         result = get_currency_rates(["EUR", "GBP"])
         assert result == {"EUR": 0.85}
 
-    @patch("utils.requests.get")
+    @patch("src.utils.requests.get")
     @patch.dict(os.environ, {"API_KEY": "test_api_key"})
     def test_get_currency_rates_timeout(self, mock_get):
         """Обработка таймаута при запросе"""
@@ -157,7 +157,7 @@ class TestGetCurrencyRates:
         result = get_currency_rates(["EUR", "GBP"])
         assert result == {"EUR": None, "GBP": None}
 
-    @patch("utils.requests.get")
+    @patch("src.utils.requests.get")
     @patch.dict(os.environ, {"API_KEY": "test_api_key"})
     def test_get_currency_rates_request_exception(self, mock_get):
         """Обработка ошибки запроса"""
@@ -172,7 +172,7 @@ class TestGetCurrencyRates:
         result = get_currency_rates(["EUR"])
         assert result == {"EUR": None}
 
-    @patch("utils.requests.get")
+    @patch("src.utils.requests.get")
     @patch.dict(os.environ, {"API_KEY": "test_api_key"})
     def test_get_currency_rates_invalid_response_format(self, mock_get):
         """Неожиданный формат ответа API"""
@@ -250,7 +250,6 @@ class TestGetCardStats:
         df = pd.DataFrame(transactions)
         result = get_card_stats(df)
 
-        # Сортируем для корректного сравнения
         result_sorted = sorted(result, key=lambda x: x["card_last_digits"])
         expected_sorted = sorted(expected, key=lambda x: x["card_last_digits"])
 
@@ -265,7 +264,6 @@ class TestGetCardStats:
         result = get_card_stats(df)
         assert len(result) == 3
 
-        # Проверяем суммы
         totals = {item["card_last_digits"]: item["total_spent"] for item in result}
         assert totals["1111"] == 250.0
         assert totals["2222"] == 250.0
@@ -299,7 +297,6 @@ class TestGetTopTransactions:
         result = get_top_transactions(df, top_n=top_n)
         assert len(result) == min(top_n, len(df))
 
-        # Проверяем, что результат отсортирован по убыванию
         amounts = [item["amount"] for item in result]
         assert amounts == sorted(amounts, reverse=True)
 
