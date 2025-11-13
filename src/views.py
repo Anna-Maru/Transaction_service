@@ -93,15 +93,11 @@ def get_main_page_json(date_str: str) -> Dict[str, Any]:
             "cards": get_card_stats(df_filtered),
             "top_transactions": get_top_transactions(df_filtered, top_n=5),
             "currency_rates": [
-                {"currency": curr, "rate": rate}
-                for curr, rate in currency_rates_dict.items()
-                if rate is not None
+                {"currency": curr, "rate": rate} for curr, rate in currency_rates_dict.items() if rate is not None
             ],
             "stock_prices": [
-                {"stock": stock, "price": price}
-                for stock, price in stock_prices_dict.items()
-                if price is not None
-            ]
+                {"stock": stock, "price": price} for stock, price in stock_prices_dict.items() if price is not None
+            ],
         }
 
         logging.info("JSON для главной страницы успешно сформирован")

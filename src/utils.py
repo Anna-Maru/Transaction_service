@@ -116,8 +116,8 @@ def get_stock_prices(stocks: List[str]) -> Dict[str, Any]:
                 if response.status_code == 200:
                     data = response.json()
                     # Парсим ответ Alpha Vantage
-                    if 'Global Quote' in data and '05. price' in data['Global Quote']:
-                        price = float(data['Global Quote']['05. price'])
+                    if "Global Quote" in data and "05. price" in data["Global Quote"]:
+                        price = float(data["Global Quote"]["05. price"])
                         prices[symbol] = price
                     else:
                         # Если не нашли цену, используем тестовую
@@ -148,11 +148,7 @@ def get_card_stats(df: pd.DataFrame) -> List[Dict[str, Any]]:
         card_tail = str(row["card_number"])[-4:]
         total = round(row["amount"], 2)
         cashback = round(total * 0.01, 2)
-        cards_info.append({
-            "last_digits": card_tail,
-            "total_spent": total,
-            "cashback": cashback
-        })
+        cards_info.append({"last_digits": card_tail, "total_spent": total, "cashback": cashback})
 
     return cards_info
 
@@ -163,7 +159,7 @@ def get_top_transactions(df: pd.DataFrame, top_n: int = 5) -> List[Dict[str, Any
         return []
 
     # Создаем копию только с нужными колонками для чистого вывода
-    columns_to_keep = ['date', 'amount', 'category', 'description', 'card_number']
+    columns_to_keep = ["date", "amount", "category", "description", "card_number"]
     available_columns = [col for col in columns_to_keep if col in df.columns]
 
     top_df = df.nlargest(top_n, "amount")[available_columns]
@@ -171,7 +167,7 @@ def get_top_transactions(df: pd.DataFrame, top_n: int = 5) -> List[Dict[str, Any
 
     # Преобразуем Timestamp в строки для JSON сериализации
     for transaction in transactions:
-        if 'date' in transaction and pd.notna(transaction['date']):
-            transaction['date'] = transaction['date'].strftime('%d.%m.%Y')
+        if "date" in transaction and pd.notna(transaction["date"]):
+            transaction["date"] = transaction["date"].strftime("%d.%m.%Y")
 
     return transactions
